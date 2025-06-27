@@ -22,6 +22,10 @@ import pyjokes
 import python_weather
 import asyncio
 
+# Set Reminder functionality
+import threading
+import time
+
 # Only needed on Windows
 # if os.name == 'nt':
     # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -36,7 +40,6 @@ def speak(text):
         engine.runAndWait()
     except:
         print("Speech output not supported in Colab.")
-# -------------------------------------------------------------------------------------------------------------------------------
 
 # -------------------------------------------------------------------------------------------------------------------------------
 # A wish_user() function to greet the user based on the current time:
@@ -56,7 +59,7 @@ def wish_user():
     speak("I am your voice assistant. How can I help you today?")
 # -------------------------------------------------------------------------------------------------------------------------------
 
-# Improved function to fetch weather information with condition handling
+# Function to fetch weather information with condition handling
 async def weather(city, state):
     location = f"{city}, {state}"
     async with python_weather.Client(unit=python_weather.IMPERIAL) as client:
@@ -75,6 +78,21 @@ async def weather(city, state):
             condition = getattr(weather_data, "description", "weather details unavailable")
         
         return temperature, condition
+# -------------------------------------------------------------------------------------------------------------------------------
+# Function to set a reminder that speaks out the reminder text after a specified delay.
+def set_reminder(reminder_text: str, delay_minutes: float):
+    """
+    Spawns a daemon thread that sleeps for delay_minutes, then calls speak().
+    """
+    delay_seconds = delay_minutes * 60
+
+    def _reminder():
+        time.sleep(delay_seconds)
+        print(f"\n")
+        speak(f"Reminder: {reminder_text}")
+
+    thread = threading.Thread(target=_reminder, daemon=True)
+    thread.start()
 
 # -------------------------------------------------------------------------------------------------------------------------------
 # Normally you would talk to the assistant using your microphone. 
@@ -136,6 +154,25 @@ def run_assistant():
             except Exception as e:
                 print(f"Error fetching weather: {e}")
                 speak("Sorry, I couldn't fetch the weather information.")
+
+        elif 'reminder' in query.lower():
+            speak("What should I remind you about?")
+            reminder_text = input("Reminder: ").strip() 
+            
+            # Ask for minutes instead of seconds
+            speak("In how many minutes should I remind you?")
+            while True:
+                raw = input("Delay (in minutes): ").strip()
+                try:
+                    delay = float(raw)
+                    if delay < 0:
+                        raise ValueError("Negative delay")
+                    break
+                except ValueError:
+                    speak("Sorry, I didn’t get that. Please enter a positive number of minutes.")
+        
+            set_reminder(reminder_text, delay)
+            speak(f"Okay, I'll remind you in {delay:g} minute{'s' if delay != 1 else ''}.")
 
         elif 'exit' in query or 'bye' in query:
             speak("Goodbye! Have a nice day!")
